@@ -32,13 +32,13 @@ func (p Patch) String() string {
 
 // GetPatch will get a patch to transform text `s1` into text `s2`
 func GetPatch(s1, s2 []byte) Patch {
-	headTail := [][]byte{[]byte{}, []byte{}, []byte{}}
+	headTail := [][]byte{{}, {}, {}}
 	for rLength := 2; rLength < 10; rLength++ {
 		isGood := true
 		for i := 0; i < 100; i++ {
 			headTail = [][]byte{
-				[]byte(randStringBytesMaskImprSrc(rLength)),
-				[]byte(randStringBytesMaskImprSrc(rLength)),
+				[]byte(randStringBytesMaskImprSrc(rLength + 2)),
+				[]byte(randStringBytesMaskImprSrc(rLength + 1)),
 				[]byte(randStringBytesMaskImprSrc(rLength)),
 			}
 			if bytes.Compare(headTail[0], headTail[1]) != 0 || bytes.Compare(headTail[0], headTail[2]) != 0 || bytes.Compare(headTail[2], headTail[1]) != 0 {
@@ -59,6 +59,11 @@ func GetPatch(s1, s2 []byte) Patch {
 		}
 	}
 	// headTail = []string{"dr", "AJ", "Ld"}
+	// headTail = [][]byte{[]byte("Nk"), []byte("7S"), []byte("7S")}
+	// headTail = [][]byte{[]byte("vV"), []byte("gu"), []byte("gu")}
+	for _, b3 := range headTail {
+		fmt.Println(string(b3))
+	}
 	s1 = bytes.Replace(s1, []byte("-"), headTail[2], -1)
 	s2 = bytes.Replace(s2, []byte("-"), headTail[2], -1)
 	patchIotas := [][][]byte{}
@@ -66,8 +71,8 @@ func GetPatch(s1, s2 []byte) Patch {
 	aln1 := combineThreeByteArrays(headTail[0], aln1B, headTail[1])
 	aln2 := combineThreeByteArrays(headTail[0], aln2B, headTail[1])
 
-	// fmt.Println(bytes.Replace(aln1, "\n", "#", -1))
-	// fmt.Println(bytes.Replace(aln2, "\n", "#", -1))
+	fmt.Println(string(bytes.Replace(aln1, []byte("\n"), []byte("#"), -1)))
+	fmt.Println(string(bytes.Replace(aln2, []byte("\n"), []byte("#"), -1)))
 	for {
 		if bytes.Compare(aln1, aln2) == 0 {
 			break
@@ -105,12 +110,13 @@ func ApplyPatch(s []byte, p Patch) ([]byte, error) {
 			return s, err
 		}
 	}
-
-	s = bytes.Replace(s, []byte("-"), []byte(""), -1)
-	s = bytes.Replace(s, p.HeadTail[2], []byte("-"), -1)
+	fmt.Println(string(s))
 	s = bytes.Replace(s, p.HeadTail[0], []byte(""), -1)
 	s = bytes.Replace(s, p.HeadTail[1], []byte(""), -1)
+	s = bytes.Replace(s, []byte("-"), []byte(""), -1)
+	s = bytes.Replace(s, p.HeadTail[2], []byte("-"), -1)
 	s = bytes.Trim(s, "\x00")
+	fmt.Println(string(s))
 	return s, err
 }
 
@@ -229,7 +235,7 @@ func getPatchIota(aln1, aln2 []byte, headTail [][]byte) ([][]byte, int) {
 	insertion := aln2[bookends[1]:bookends[2]]
 	insertion = bytes.Replace(insertion, []byte("-"), []byte(""), -1)
 
-	// fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
+	fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
 	return [][]byte{left, right, insertion}, bookends[2]
 }
 
