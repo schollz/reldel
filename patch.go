@@ -99,8 +99,8 @@ func count(s, substr string) int {
 func applyPatchIota(s string, p PatchIota) string {
 	pos1 := strings.Index(s, p.Left)
 	if pos1 == -1 {
-		fmt.Printf("'%s'", s)
-		fmt.Printf("'%s'", p.Left)
+		fmt.Printf("\n\n'%s'", s)
+		fmt.Printf("\n\n'%s'", p.Left)
 		panic("problem")
 	}
 	// move position up if overlapping sequence is there (go only finds
