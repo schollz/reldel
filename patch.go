@@ -48,6 +48,7 @@ func GetPatch(s1, s2 string) Patch {
 			break
 		}
 	}
+	headTail = []string{"dr", "AJ", "Ld"}
 	s1 = strings.Replace(s1, "-", headTail[2], -1)
 	s2 = strings.Replace(s2, "-", headTail[2], -1)
 	patchIotas := []PatchIota{}
@@ -136,7 +137,8 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 
 	// find unique subsequence in front
 	for i := bookends[0]; i < bookends[1]; i++ {
-		if count(aln1, aln1[i:bookends[1]]) > 1 {
+
+		if count(strings.Replace(aln1, "-", "", -1), strings.Replace(aln1[i:bookends[1]], "-", "", -1)) > 1 {
 			break
 		}
 		bookends[0] = i
@@ -145,7 +147,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 
 	// find where next matching subsequence begins
 	bookends[2] = bookends[1]
-	for j := 0; j < 30; j++ {
+	for j := 0; j < 300; j++ {
 		for i := bookends[2]; i < len(aln1); i++ {
 			bookends[2] = i
 			if aln1[i] == aln2[i] {
@@ -165,7 +167,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 			bookends[3] = len(aln1)
 		}
 		// fmt.Printf("2 %+v, '%s'\n", bookends, aln1[bookends[2]:bookends[3]])
-		if count(aln1, aln1[bookends[2]:bookends[3]]) == 1 {
+		if count(strings.Replace(aln1, "-", "", -1), strings.Replace(aln1[bookends[2]:bookends[3]], "-", "", -1)) == 1 {
 			break
 		}
 		bookends[2] = bookends[3]
@@ -173,7 +175,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 	// now that we have a second matching sequence, try to reduce it
 	for bookends[3] = bookends[2] + 1; bookends[3] < len(aln1); bookends[3]++ {
 		// fmt.Println(bookends, aln1[bookends[2]:bookends[3]])
-		if count(aln1, aln1[bookends[2]:bookends[3]]) == 1 {
+		if count(strings.Replace(aln1, "-", "", -1), strings.Replace(aln1[bookends[2]:bookends[3]], "-", "", -1)) == 1 {
 			break
 		}
 	}
@@ -185,7 +187,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 	left := aln1[bookends[0]:bookends[1]]
 	right := aln1[bookends[2]:bookends[3]]
 	insertion := aln2[bookends[1]:bookends[2]]
-	// insertion = strings.Replace(insertion, "-", "", -1)
+	insertion = strings.Replace(insertion, "-", "", -1)
 
 	// fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
 	return PatchIota{

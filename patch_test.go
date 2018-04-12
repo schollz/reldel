@@ -14,6 +14,16 @@ func TestGetPatch1(t *testing.T) {
 	assert.Equal(t, "ca-t", ApplyPatch("", p))
 }
 
+func TestGetPatchHard(t *testing.T) {
+	b1, _ := ioutil.ReadFile("testing/1")
+	b2, _ := ioutil.ReadFile("testing/2")
+	p := GetPatch(string(b1), string(b2))
+	bP, _ := json.MarshalIndent(p, "", " ")
+	fmt.Println(string(bP))
+	assert.Equal(t, string(b2), ApplyPatch(string(b1), p))
+	ioutil.WriteFile("out.json", bP, 0644)
+}
+
 func TestGetPatch2(t *testing.T) {
 	b1, _ := ioutil.ReadFile("testing/3")
 	b2, _ := ioutil.ReadFile("testing/4")
