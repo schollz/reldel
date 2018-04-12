@@ -1,6 +1,7 @@
 package reldel
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -9,9 +10,10 @@ import (
 
 func TestGetPatch1(t *testing.T) {
 	p := GetPatch("", "cat")
-	fmt.Println(p)
 	assert.Equal(t, "cat", p.PatchIotas[0].Between)
 	assert.Equal(t, "cat", ApplyPatch("", p))
-	// p = GetPatch("hungry cat", "hungry orange cats")
-	// fmt.Println(p)
+	p = GetPatch("hungry cat", "hungry orange cats")
+	bP, _ := json.MarshalIndent(p, "", " ")
+	fmt.Println(string(bP))
+	assert.Equal(t, "hungry orange cats", ApplyPatch("hungry cat", p))
 }

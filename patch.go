@@ -1,8 +1,7 @@
 package reldel
 
 import (
-	"encoding/json"
-	"fmt"
+	"math/rand"
 	"regexp"
 	"strings"
 	"time"
@@ -10,13 +9,12 @@ import (
 	"github.com/schollz/nwalgo"
 )
 
-const HEAD = "start>>>>>"
-const TAIL = "<<<<<<<end"
 const match = 1
 const mismatch = -1
 const gap = -1
 
 type Patch struct {
+	HeadTail   []string    `json:"h"`
 	PatchIotas []PatchIota `json:"p"`
 	Time       time.Time   `json:"t"`
 }
@@ -28,8 +26,27 @@ type PatchIota struct {
 }
 
 func GetPatch(s1, s2 string) Patch {
-	s1 = HEAD + strings.Replace(s1, "-", "**dash**", -1) + TAIL
-	s2 = HEAD + strings.Replace(s2, "-", "**dash**", -1) + TAIL
+	headTail := []string{"start>>>>>>>>>", "<<<<<<<<<<end"}
+	for rLength := 2; rLength < 10; rLength++ {
+		isGood := true
+		for i := 0; i < 1000; i++ {
+			headTail = []string{RandStringBytesMaskImprSrc(2), RandStringBytesMaskImprSrc(2)}
+			for _, h := range headTail {
+				if strings.Contains(s1, h) || strings.Contains(s2, h) {
+					isGood = false
+					break
+				}
+			}
+			if isGood {
+				break
+			}
+		}
+		if isGood {
+			break
+		}
+	}
+	s1 = headTail[0] + strings.Replace(s1, "-", "**dash**", -1) + headTail[1]
+	s2 = headTail[0] + strings.Replace(s2, "-", "**dash**", -1) + headTail[1]
 	patchIotas := []PatchIota{}
 	aln1, aln2, _ := nwalgo.Align(s1, s2, match, mismatch, gap)
 	for {
@@ -40,34 +57,37 @@ func GetPatch(s1, s2 string) Patch {
 		patchIotas = append(patchIotas, p)
 		aln1 = aln2[0:nextStart] + aln1[nextStart:]
 	}
-	bP, _ := json.MarshalIndent(patchIotas, "", " ")
-	fmt.Println(string(bP))
 	return Patch{
 		Time:       time.Now(),
 		PatchIotas: patchIotas,
+		HeadTail:   headTail,
 	}
 }
 
 func ApplyPatch(s1 string, p Patch) string {
 	for _, patchIota := range p.PatchIotas {
-		s1 = applyPatchIota(s1, patchIota)
+		s1 = applyPatchIota(s1, patchIota, p.HeadTail)
 	}
 	return s1
 }
 
 func count(s, substr string) int {
-	// need to find overlapping matches
 	return strings.Count(s, substr)
 }
 
-func applyPatchIota(s string, p PatchIota) string {
-	s = HEAD + s + TAIL
-	locs := regexp.MustCompile("(?=("+p.Left+")").FindAllStringIndex(s, -1)
-	fmt.Println(p.Left, locs)
-	pos1 := locs[len(locs)-1][1]
+func applyPatchIota(s string, p PatchIota, headTail []string) string {
+	s = headTail[0] + s + headTail[1]
+	locs := regexp.MustCompile(p.Left).FindAllStringIndex(s, -1)
+	pos1 := locs[0][1]
+	// move position up if overlapping sequence is there (go only finds
+	// the non-overlapping sequences)
+	for i := locs[0][0]; i < locs[0][1]; i++ {
+		if s[i:i+len(p.Left)] == p.Left {
+			pos1 = i + len(p.Left)
+		}
+	}
 	pos2 := regexp.MustCompile(p.Right).FindAllStringIndex(s, 1)[0][0]
-	fmt.Println(s, pos1, pos2)
-	return strings.TrimSuffix(strings.TrimPrefix(s[:pos1]+p.Between+s[pos2:], HEAD), TAIL)
+	return strings.TrimSuffix(strings.TrimPrefix(s[:pos1]+p.Between+s[pos2:], headTail[0]), headTail[1])
 }
 
 func getPatchIota(aln1, aln2 string) (PatchIota, int) {
@@ -82,7 +102,7 @@ func getPatchIota(aln1, aln2 string) (PatchIota, int) {
 			break
 		}
 	}
-	fmt.Printf("%+v, '%s'\n", bookends, aln1[bookends[0]:bookends[1]])
+	// fmt.Printf("%+v, '%s'\n", bookends, aln1[bookends[0]:bookends[1]])
 
 	// find unique subsequence in front
 	for i := bookends[0]; i < bookends[1]; i++ {
@@ -91,7 +111,7 @@ func getPatchIota(aln1, aln2 string) (PatchIota, int) {
 		}
 		bookends[0] = i
 	}
-	fmt.Printf("%+v, '%s'\n", bookends, aln1[bookends[0]:bookends[1]])
+	// fmt.Printf("%+v, '%s'\n", bookends, aln1[bookends[0]:bookends[1]])
 
 	// find where next matching subsequence begins
 	bookends[2] = bookends[1]
@@ -102,7 +122,7 @@ func getPatchIota(aln1, aln2 string) (PatchIota, int) {
 				break
 			}
 		}
-		fmt.Printf("1 %+v, '%s' %d\n", bookends, aln1[bookends[2]:], len(aln1))
+		// fmt.Printf("1 %+v, '%s' %d\n", bookends, aln1[bookends[2]:], len(aln1))
 		// find where the next matching sequence ends
 		bookends[3] = bookends[2]
 		for i := bookends[2]; i < len(aln1); i++ {
@@ -114,7 +134,7 @@ func getPatchIota(aln1, aln2 string) (PatchIota, int) {
 		if bookends[2] == bookends[3] {
 			bookends[3] = len(aln1)
 		}
-		fmt.Printf("2 %+v, '%s'\n", bookends, aln1[bookends[2]:bookends[3]])
+		// fmt.Printf("2 %+v, '%s'\n", bookends, aln1[bookends[2]:bookends[3]])
 		if count(aln1, aln1[bookends[2]:bookends[3]]) == 1 {
 			break
 		}
@@ -122,7 +142,7 @@ func getPatchIota(aln1, aln2 string) (PatchIota, int) {
 	}
 	// now that we have a second matching sequence, try to reduce it
 	for bookends[3] = bookends[2] + 1; bookends[3] < len(aln1); bookends[3]++ {
-		fmt.Println(bookends, aln1[bookends[2]:bookends[3]])
+		// fmt.Println(bookends, aln1[bookends[2]:bookends[3]])
 		if count(aln1, aln1[bookends[2]:bookends[3]]) == 1 {
 			break
 		}
@@ -136,10 +156,37 @@ func getPatchIota(aln1, aln2 string) (PatchIota, int) {
 	insertion = strings.Replace(insertion, "-", "", -1)
 	insertion = strings.Replace(insertion, "**dash**", "-", -1)
 
-	fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
+	// fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
 	return PatchIota{
 		Left:    left,
 		Right:   right,
 		Between: insertion,
 	}, bookends[2]
+}
+
+var src = rand.NewSource(time.Now().UnixNano())
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const (
+	letterIdxBits = 6                    // 6 bits to represent a letter index
+	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+)
+
+func RandStringBytesMaskImprSrc(n int) string {
+	b := make([]byte, n)
+	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
+	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = src.Int63(), letterIdxMax
+		}
+		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
+			b[i] = letterBytes[idx]
+			i--
+		}
+		cache >>= letterIdxBits
+		remain--
+	}
+
+	return string(b)
 }
