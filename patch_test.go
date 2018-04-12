@@ -30,7 +30,12 @@ func BenchmarkAlign(b *testing.B) {
 		nwalgo.Align(string(b1), string(b2), match, mismatch, gap)
 	}
 }
-
+func TestGetPatchEmpty(t *testing.T) {
+	p := GetPatch("", "")
+	s, err := ApplyPatch("", p)
+	assert.Nil(t, err)
+	assert.Equal(t, "", s)
+}
 func TestGetPatch1(t *testing.T) {
 	p := GetPatch("", "ca-t")
 	s, err := ApplyPatch("", p)
