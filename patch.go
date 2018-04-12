@@ -29,8 +29,8 @@ func GetPatch(s1, s2 string) Patch {
 	headTail := []string{"start>>>>>>>>>", "<<<<<<<<<<end", "**dash**"}
 	for rLength := 2; rLength < 10; rLength++ {
 		isGood := true
-		for i := 0; i < 1000; i++ {
-			headTail = []string{RandStringBytesMaskImprSrc(rLength), RandStringBytesMaskImprSrc(rLength), RandStringBytesMaskImprSrc(rLength)}
+		for i := 0; i < 100; i++ {
+			headTail = []string{randStringBytesMaskImprSrc(rLength), randStringBytesMaskImprSrc(rLength), randStringBytesMaskImprSrc(rLength)}
 			if headTail[0] == headTail[1] || headTail[1] == headTail[2] || headTail[0] == headTail[2] {
 				continue
 			}
@@ -48,7 +48,7 @@ func GetPatch(s1, s2 string) Patch {
 			break
 		}
 	}
-	headTail = []string{"dr", "AJ", "Ld"}
+	// headTail = []string{"dr", "AJ", "Ld"}
 	s1 = strings.Replace(s1, "-", headTail[2], -1)
 	s2 = strings.Replace(s2, "-", headTail[2], -1)
 	patchIotas := []PatchIota{}
@@ -86,8 +86,23 @@ func ApplyPatch(s string, p Patch) string {
 	return s
 }
 
-func count(s, substr string) int {
-	return strings.Count(s, substr)
+func count(s, sep string, leaveAfter ...int) (count int) {
+	// special case
+	if len(sep) == 0 {
+		return len(s)
+	}
+	n := 0
+	for {
+		i := strings.Index(s, sep)
+		if i == -1 {
+			return n
+		}
+		n++
+		if len(leaveAfter) > 0 && n >= leaveAfter[0] {
+			return n
+		}
+		s = s[i+len(sep):]
+	}
 }
 
 func applyPatchIota(s string, p PatchIota) string {
@@ -120,6 +135,7 @@ func applyPatchIota(s string, p PatchIota) string {
 }
 
 func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
+	aln1WithoutWhiteSpace := strings.Replace(aln1, "-", "", -1)
 	// fmt.Print("\n")
 	// fmt.Println(aln1)
 	// fmt.Println(aln2)
@@ -136,10 +152,9 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 	// fmt.Printf("%+v, '%s'\n", bookends, aln1[bookends[0]:bookends[1]])
 
 	// find unique subsequence in front
-	for i := bookends[0]; i < bookends[1]; i++ {
-
-		if count(strings.Replace(aln1, "-", "", -1), strings.Replace(aln1[i:bookends[1]], "-", "", -1)) > 1 {
-			break
+	for i := bookends[1]; i >= bookends[0]; i-- {
+		if count(aln1WithoutWhiteSpace, strings.Replace(aln1[i:bookends[1]], "-", "", -1), 2) > 1 {
+			continue
 		}
 		bookends[0] = i
 	}
@@ -167,7 +182,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 			bookends[3] = len(aln1)
 		}
 		// fmt.Printf("2 %+v, '%s'\n", bookends, aln1[bookends[2]:bookends[3]])
-		if count(strings.Replace(aln1, "-", "", -1), strings.Replace(aln1[bookends[2]:bookends[3]], "-", "", -1)) == 1 {
+		if count(aln1WithoutWhiteSpace, strings.Replace(aln1[bookends[2]:bookends[3]], "-", "", -1), 2) == 1 {
 			break
 		}
 		bookends[2] = bookends[3]
@@ -175,7 +190,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 	// now that we have a second matching sequence, try to reduce it
 	for bookends[3] = bookends[2] + 1; bookends[3] < len(aln1); bookends[3]++ {
 		// fmt.Println(bookends, aln1[bookends[2]:bookends[3]])
-		if count(strings.Replace(aln1, "-", "", -1), strings.Replace(aln1[bookends[2]:bookends[3]], "-", "", -1)) == 1 {
+		if count(aln1WithoutWhiteSpace, strings.Replace(aln1[bookends[2]:bookends[3]], "-", "", -1), 2) == 1 {
 			break
 		}
 	}
@@ -206,7 +221,7 @@ const (
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
 )
 
-func RandStringBytesMaskImprSrc(n int) string {
+func randStringBytesMaskImprSrc(n int) string {
 	b := make([]byte, n)
 	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
 	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
