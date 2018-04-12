@@ -2,6 +2,7 @@ package reldel
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -79,6 +80,14 @@ func TestGetPatch4(t *testing.T) {
 	s, err = ApplyPatch(s2, p2)
 	assert.Nil(t, err)
 	assert.Equal(t, "The brown cow leaped over the full moon", s)
+}
+
+func TestGetPatch5(t *testing.T) {
+	s1 := `Sometimes when I want a recipe to cook something new I will find several recipes for the same thing and try to use them as a guide to generate an average or "consensus" recipe. This code should make it easy to generate consensus recipes (useful!) and also show variation between recipes (interesting!).`
+	s2 := `Sometimes when I want a recipes to cook something new I will find several recipes for the same thing and try to use them as a guide to generate an average or "consensus" recipe. This code should make it easy to generate consensus (useful!) and also show variation between recipes (interesting!).`
+	p := GetPatch(s1, s2)
+	bP, _ := json.MarshalIndent(p, "", " ")
+	fmt.Println(string(bP))
 }
 
 func TestBadPatch(t *testing.T) {

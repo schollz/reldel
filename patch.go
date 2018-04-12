@@ -14,15 +14,9 @@ const mismatch = -1
 const gap = -5
 
 type Patch struct {
-	HeadTail   []string    `json:"h"`
-	PatchIotas []PatchIota `json:"p"`
-	Time       time.Time   `json:"t"`
-}
-
-type PatchIota struct {
-	Left    string `json:"l"`
-	Right   string `json:"r"`
-	Between string `json:"b"`
+	HeadTail   []string   `json:"h"`
+	PatchIotas [][]string `json:"p"`
+	Time       time.Time  `json:"t"`
 }
 
 func GetPatch(s1, s2 string) Patch {
@@ -51,7 +45,7 @@ func GetPatch(s1, s2 string) Patch {
 	// headTail = []string{"dr", "AJ", "Ld"}
 	s1 = strings.Replace(s1, "-", headTail[2], -1)
 	s2 = strings.Replace(s2, "-", headTail[2], -1)
-	patchIotas := []PatchIota{}
+	patchIotas := [][]string{}
 	aln1, aln2, _ := nwalgo.Align(s1, s2, match, mismatch, gap)
 	aln1 = headTail[0] + aln1 + headTail[1]
 	aln2 = headTail[0] + aln2 + headTail[1]
@@ -109,32 +103,32 @@ func count(s, sep string, leaveAfter ...int) (count int) {
 	}
 }
 
-func applyPatchIota(s string, p PatchIota) (string, error) {
-	pos1 := strings.Index(s, p.Left)
+func applyPatchIota(s string, p []string) (string, error) {
+	pos1 := strings.Index(s, p[0])
 	if pos1 == -1 {
 		return "", fmt.Errorf("left index no longer exists")
 	}
 	// move position up if overlapping sequence is there (go only finds
 	// the non-overlapping sequences)
-	for i := pos1; i < pos1+len(p.Left); i++ {
-		if i+len(p.Left) > len(s)-1 {
+	for i := pos1; i < pos1+len(p[0]); i++ {
+		if i+len(p[0]) > len(s)-1 {
 			break
 		}
-		if s[i:i+len(p.Left)] == p.Left {
+		if s[i:i+len(p[0])] == p[0] {
 			pos1 = i
 		}
 	}
-	pos1 = pos1 + len(p.Left)
-	pos2 := strings.Index(s, p.Right)
+	pos1 = pos1 + len(p[0])
+	pos2 := strings.Index(s, p[1])
 	if pos2 == -1 {
 		return "", fmt.Errorf("right index no longer exists")
 	}
-	s = s[:pos1] + p.Between + s[pos2:]
+	s = s[:pos1] + p[2] + s[pos2:]
 	// fmt.Println(s)
 	return s, nil
 }
 
-func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
+func getPatchIota(aln1, aln2 string, headTail []string) ([]string, int) {
 	aln1WithoutWhiteSpace := strings.Replace(aln1, "-", "", -1)
 	// fmt.Print("\n")
 	// fmt.Println(aln1)
@@ -205,11 +199,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 	insertion = strings.Replace(insertion, "-", "", -1)
 
 	// fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
-	return PatchIota{
-		Left:    left,
-		Right:   right,
-		Between: insertion,
-	}, bookends[2]
+	return []string{left, right, insertion}, bookends[2]
 }
 
 var src = rand.NewSource(time.Now().UnixNano())
