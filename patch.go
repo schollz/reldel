@@ -48,12 +48,15 @@ func GetPatch(s1, s2 string) Patch {
 			break
 		}
 	}
-	s1 = headTail[0] + strings.Replace(s1, "-", headTail[2], -1) + headTail[1]
-	s2 = headTail[0] + strings.Replace(s2, "-", headTail[2], -1) + headTail[1]
+	s1 = strings.Replace(s1, "-", headTail[2], -1)
+	s2 = strings.Replace(s2, "-", headTail[2], -1)
 	patchIotas := []PatchIota{}
 	aln1, aln2, _ := nwalgo.Align(s1, s2, match, mismatch, gap)
-	fmt.Println(aln1)
-	fmt.Println(aln2)
+	aln1 = headTail[0] + aln1 + headTail[1]
+	aln2 = headTail[0] + aln2 + headTail[1]
+
+	// fmt.Println(strings.Replace(aln1, "\n", "#", -1))
+	// fmt.Println(strings.Replace(aln2, "\n", "#", -1))
 	for {
 		if aln1 == aln2 {
 			break
@@ -69,22 +72,36 @@ func GetPatch(s1, s2 string) Patch {
 	}
 }
 
-func ApplyPatch(s1 string, p Patch) string {
+func ApplyPatch(s string, p Patch) string {
+	s = p.HeadTail[0] + strings.Replace(s, "-", p.HeadTail[2], -1) + p.HeadTail[1]
 	for _, patchIota := range p.PatchIotas {
-		s1 = applyPatchIota(s1, patchIota, p.HeadTail)
+		s = applyPatchIota(s, patchIota)
 	}
-	return s1
+	for {
+		s = strings.Replace(s, p.HeadTail[2], "-", -1)
+		s = strings.TrimPrefix(s, p.HeadTail[0])
+		s = strings.TrimSuffix(s, p.HeadTail[1])
+		if strings.Contains(s, p.HeadTail[0]) {
+			continue
+		}
+		if strings.Contains(s, p.HeadTail[1]) {
+			continue
+		}
+		break
+	}
+	return s
 }
 
 func count(s, substr string) int {
 	return strings.Count(s, substr)
 }
 
-func applyPatchIota(s string, p PatchIota, headTail []string) string {
-	s = headTail[0] + s + headTail[1]
+func applyPatchIota(s string, p PatchIota) string {
 	pos1 := strings.Index(s, p.Left)
 	if pos1 == -1 {
-		return s
+		fmt.Printf("'%s'", s)
+		fmt.Printf("'%s'", p.Left)
+		panic("problem")
 	}
 	// move position up if overlapping sequence is there (go only finds
 	// the non-overlapping sequences)
@@ -99,9 +116,13 @@ func applyPatchIota(s string, p PatchIota, headTail []string) string {
 	pos1 = pos1 + len(p.Left)
 	pos2 := strings.Index(s, p.Right)
 	if pos2 == -1 {
-		return s
+		fmt.Printf("\n\n'%s'", s)
+		fmt.Printf("\n\n'%s'", p.Right)
+		panic("problem")
 	}
-	return strings.TrimSuffix(strings.TrimPrefix(s[:pos1]+p.Between+s[pos2:], headTail[0]), headTail[1])
+	s = s[:pos1] + p.Between + s[pos2:]
+
+	return s
 }
 
 func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
@@ -162,7 +183,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 		}
 	}
 
-	fmt.Println(bookends)
+	// fmt.Println(bookends)
 	if bookends[3] > len(aln1) {
 		bookends[3] = len(aln1)
 	}
@@ -174,7 +195,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 	insertion = strings.Replace(insertion, "-", "", -1)
 	insertion = strings.Replace(insertion, headTail[2], "-", -1)
 
-	fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
+	// fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
 	return PatchIota{
 		Left:    left,
 		Right:   right,
