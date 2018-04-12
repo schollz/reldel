@@ -9,9 +9,9 @@ import (
 	"github.com/schollz/nwalgo"
 )
 
-const match = 1
+const match = 10
 const mismatch = -1
-const gap = -1
+const gap = -5
 
 type Patch struct {
 	HeadTail   []string    `json:"h"`
@@ -73,17 +73,21 @@ func GetPatch(s1, s2 string) Patch {
 	}
 }
 
-func ApplyPatch(s string, p Patch) string {
+func ApplyPatch(s string, p Patch) (string, error) {
 	s = p.HeadTail[0] + strings.Replace(s, "-", p.HeadTail[2], -1) + p.HeadTail[1]
+	var err error
 	for _, patchIota := range p.PatchIotas {
-		s = applyPatchIota(s, patchIota)
+		s, err = applyPatchIota(s, patchIota)
+		if err != nil {
+			return s, err
+		}
 	}
 	s = strings.Replace(s, "-", "", -1)
 	s = strings.Replace(s, p.HeadTail[2], "-", -1)
 	s = strings.Replace(s, p.HeadTail[0], "", -1)
 	s = strings.Replace(s, p.HeadTail[1], "", -1)
 
-	return s
+	return s, err
 }
 
 func count(s, sep string, leaveAfter ...int) (count int) {
@@ -105,12 +109,10 @@ func count(s, sep string, leaveAfter ...int) (count int) {
 	}
 }
 
-func applyPatchIota(s string, p PatchIota) string {
+func applyPatchIota(s string, p PatchIota) (string, error) {
 	pos1 := strings.Index(s, p.Left)
 	if pos1 == -1 {
-		fmt.Printf("\n\n'%s'", s)
-		fmt.Printf("\n\n'%s'", p.Left)
-		panic("problem")
+		return "", fmt.Errorf("left index no longer exists")
 	}
 	// move position up if overlapping sequence is there (go only finds
 	// the non-overlapping sequences)
@@ -125,13 +127,11 @@ func applyPatchIota(s string, p PatchIota) string {
 	pos1 = pos1 + len(p.Left)
 	pos2 := strings.Index(s, p.Right)
 	if pos2 == -1 {
-		fmt.Printf("\n\n'%s'", s)
-		fmt.Printf("\n\n'%s'", p.Right)
-		panic("problem")
+		return "", fmt.Errorf("right index no longer exists")
 	}
 	s = s[:pos1] + p.Between + s[pos2:]
 	// fmt.Println(s)
-	return s
+	return s, nil
 }
 
 func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
