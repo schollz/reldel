@@ -1,8 +1,8 @@
 package reldel
 
 import (
+	"fmt"
 	"math/rand"
-	"regexp"
 	"strings"
 	"time"
 
@@ -26,11 +26,14 @@ type PatchIota struct {
 }
 
 func GetPatch(s1, s2 string) Patch {
-	headTail := []string{"start>>>>>>>>>", "<<<<<<<<<<end"}
+	headTail := []string{"start>>>>>>>>>", "<<<<<<<<<<end", "**dash**"}
 	for rLength := 2; rLength < 10; rLength++ {
 		isGood := true
 		for i := 0; i < 1000; i++ {
-			headTail = []string{RandStringBytesMaskImprSrc(2), RandStringBytesMaskImprSrc(2)}
+			headTail = []string{RandStringBytesMaskImprSrc(rLength), RandStringBytesMaskImprSrc(rLength), RandStringBytesMaskImprSrc(rLength)}
+			if headTail[0] == headTail[1] || headTail[1] == headTail[2] || headTail[0] == headTail[2] {
+				continue
+			}
 			for _, h := range headTail {
 				if strings.Contains(s1, h) || strings.Contains(s2, h) {
 					isGood = false
@@ -45,15 +48,17 @@ func GetPatch(s1, s2 string) Patch {
 			break
 		}
 	}
-	s1 = headTail[0] + strings.Replace(s1, "-", "**dash**", -1) + headTail[1]
-	s2 = headTail[0] + strings.Replace(s2, "-", "**dash**", -1) + headTail[1]
+	s1 = headTail[0] + strings.Replace(s1, "-", headTail[2], -1) + headTail[1]
+	s2 = headTail[0] + strings.Replace(s2, "-", headTail[2], -1) + headTail[1]
 	patchIotas := []PatchIota{}
 	aln1, aln2, _ := nwalgo.Align(s1, s2, match, mismatch, gap)
+	fmt.Println(aln1)
+	fmt.Println(aln2)
 	for {
 		if aln1 == aln2 {
 			break
 		}
-		p, nextStart := getPatchIota(aln1, aln2)
+		p, nextStart := getPatchIota(aln1, aln2, headTail)
 		patchIotas = append(patchIotas, p)
 		aln1 = aln2[0:nextStart] + aln1[nextStart:]
 	}
@@ -77,20 +82,29 @@ func count(s, substr string) int {
 
 func applyPatchIota(s string, p PatchIota, headTail []string) string {
 	s = headTail[0] + s + headTail[1]
-	locs := regexp.MustCompile(p.Left).FindAllStringIndex(s, -1)
-	pos1 := locs[0][1]
+	pos1 := strings.Index(s, p.Left)
+	if pos1 == -1 {
+		return s
+	}
 	// move position up if overlapping sequence is there (go only finds
 	// the non-overlapping sequences)
-	for i := locs[0][0]; i < locs[0][1]; i++ {
+	for i := pos1; i < pos1+len(p.Left); i++ {
+		if i+len(p.Left) > len(s)-1 {
+			break
+		}
 		if s[i:i+len(p.Left)] == p.Left {
-			pos1 = i + len(p.Left)
+			pos1 = i
 		}
 	}
-	pos2 := regexp.MustCompile(p.Right).FindAllStringIndex(s, 1)[0][0]
+	pos1 = pos1 + len(p.Left)
+	pos2 := strings.Index(s, p.Right)
+	if pos2 == -1 {
+		return s
+	}
 	return strings.TrimSuffix(strings.TrimPrefix(s[:pos1]+p.Between+s[pos2:], headTail[0]), headTail[1])
 }
 
-func getPatchIota(aln1, aln2 string) (PatchIota, int) {
+func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 
 	// abcdef
 	// ab-def
@@ -148,15 +162,19 @@ func getPatchIota(aln1, aln2 string) (PatchIota, int) {
 		}
 	}
 
+	fmt.Println(bookends)
+	if bookends[3] > len(aln1) {
+		bookends[3] = len(aln1)
+	}
 	left := aln1[bookends[0]:bookends[1]]
-	left = strings.Replace(left, "**dash**", "-", -1)
 	right := aln1[bookends[2]:bookends[3]]
-	right = strings.Replace(right, "**dash**", "-", -1)
 	insertion := aln2[bookends[1]:bookends[2]]
+	left = strings.Replace(left, headTail[2], "-", -1)
+	right = strings.Replace(right, headTail[2], "-", -1)
 	insertion = strings.Replace(insertion, "-", "", -1)
-	insertion = strings.Replace(insertion, "**dash**", "-", -1)
+	insertion = strings.Replace(insertion, headTail[2], "-", -1)
 
-	// fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
+	fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
 	return PatchIota{
 		Left:    left,
 		Right:   right,
