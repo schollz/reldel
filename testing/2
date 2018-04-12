@@ -1,1 +1,1 @@
-s1 = strings.Replace(s1, "-", headTail[2], -1) s2 = strings.Replace(s2, "-", headTail[2], -1)
+s1 = strings.Replace(s1, "-", headTail[2], -1) s2 = strings.Replace(s2, "-", headTail[2], -1) "-", headTail[2], -1)

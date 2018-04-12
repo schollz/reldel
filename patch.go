@@ -1,9 +1,9 @@
 package reldel
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
-	"strings"
 	"time"
 
 	"github.com/schollz/nwalgo"
@@ -15,23 +15,37 @@ const gap = -5
 
 // Patch is the unit of patching for a string
 type Patch struct {
-	HeadTail   []string   `json:"h"`
-	PatchIotas [][]string `json:"p"`
+	HeadTail   [][]byte   `json:"h"`
+	PatchIotas [][][]byte `json:"p"`
 	Time       time.Time  `json:"t"`
 }
 
+func (p Patch) String() string {
+	s := ""
+	for i, patchiota := range p.PatchIotas {
+		for j, patch := range patchiota {
+			s += fmt.Sprintf("%d-%d) %s\n", i, j, patch)
+		}
+	}
+	return s
+}
+
 // GetPatch will get a patch to transform text `s1` into text `s2`
-func GetPatch(s1, s2 string) Patch {
-	headTail := []string{"start>>>>>>>>>", "<<<<<<<<<<end", "**dash**"}
+func GetPatch(s1, s2 []byte) Patch {
+	headTail := [][]byte{[]byte{}, []byte{}, []byte{}}
 	for rLength := 2; rLength < 10; rLength++ {
 		isGood := true
 		for i := 0; i < 100; i++ {
-			headTail = []string{randStringBytesMaskImprSrc(rLength), randStringBytesMaskImprSrc(rLength), randStringBytesMaskImprSrc(rLength)}
-			if headTail[0] == headTail[1] || headTail[1] == headTail[2] || headTail[0] == headTail[2] {
+			headTail = [][]byte{
+				[]byte(randStringBytesMaskImprSrc(rLength)),
+				[]byte(randStringBytesMaskImprSrc(rLength)),
+				[]byte(randStringBytesMaskImprSrc(rLength)),
+			}
+			if bytes.Compare(headTail[0], headTail[1]) != 0 || bytes.Compare(headTail[0], headTail[2]) != 0 || bytes.Compare(headTail[2], headTail[1]) != 0 {
 				continue
 			}
 			for _, h := range headTail {
-				if strings.Contains(s1, h) || strings.Contains(s2, h) {
+				if bytes.Contains(s1, h) || bytes.Contains(s2, h) {
 					isGood = false
 					break
 				}
@@ -45,22 +59,22 @@ func GetPatch(s1, s2 string) Patch {
 		}
 	}
 	// headTail = []string{"dr", "AJ", "Ld"}
-	s1 = strings.Replace(s1, "-", headTail[2], -1)
-	s2 = strings.Replace(s2, "-", headTail[2], -1)
-	patchIotas := [][]string{}
-	aln1, aln2, _ := nwalgo.Align(s1, s2, match, mismatch, gap)
-	aln1 = headTail[0] + aln1 + headTail[1]
-	aln2 = headTail[0] + aln2 + headTail[1]
+	s1 = bytes.Replace(s1, []byte("-"), headTail[2], -1)
+	s2 = bytes.Replace(s2, []byte("-"), headTail[2], -1)
+	patchIotas := [][][]byte{}
+	aln1B, aln2B, _ := nwalgo.Align(s1, s2, match, mismatch, gap)
+	aln1 := combineThreeByteArrays(headTail[0], aln1B, headTail[1])
+	aln2 := combineThreeByteArrays(headTail[0], aln2B, headTail[1])
 
-	// fmt.Println(strings.Replace(aln1, "\n", "#", -1))
-	// fmt.Println(strings.Replace(aln2, "\n", "#", -1))
+	// fmt.Println(bytes.Replace(aln1, "\n", "#", -1))
+	// fmt.Println(bytes.Replace(aln2, "\n", "#", -1))
 	for {
-		if aln1 == aln2 {
+		if bytes.Compare(aln1, aln2) == 0 {
 			break
 		}
 		p, nextStart := getPatchIota(aln1, aln2, headTail)
 		patchIotas = append(patchIotas, p)
-		aln1 = aln2[0:nextStart] + aln1[nextStart:]
+		copy(aln1[0:nextStart], aln2[0:nextStart])
 	}
 	return Patch{
 		Time:       time.Now(),
@@ -69,11 +83,21 @@ func GetPatch(s1, s2 string) Patch {
 	}
 }
 
+func combineThreeByteArrays(l, m, r []byte) []byte {
+	s := make([]byte, len(l)+len(m)+len(r))
+	copy(s[:len(l)], l)
+	copy(s[len(l):len(l)+len(m)], m)
+	copy(s[len(l)+len(m):], r)
+	return s
+}
+
 // ApplyPatch will transform string `s` using the supplied patch. If there is a problem
 // (which can occur if there has been an edit in the same place) then an error is thrown
 // and the currently patched string is returned.
-func ApplyPatch(s string, p Patch) (string, error) {
-	s = p.HeadTail[0] + strings.Replace(s, "-", p.HeadTail[2], -1) + p.HeadTail[1]
+func ApplyPatch(s []byte, p Patch) ([]byte, error) {
+	s = combineThreeByteArrays(p.HeadTail[0], bytes.Replace(s, []byte("-"), p.HeadTail[2], -1), p.HeadTail[1])
+	// fmt.Println("applying to", string(s), s)
+
 	var err error
 	for _, patchIota := range p.PatchIotas {
 		s, err = applyPatchIota(s, patchIota)
@@ -81,22 +105,23 @@ func ApplyPatch(s string, p Patch) (string, error) {
 			return s, err
 		}
 	}
-	s = strings.Replace(s, "-", "", -1)
-	s = strings.Replace(s, p.HeadTail[2], "-", -1)
-	s = strings.Replace(s, p.HeadTail[0], "", -1)
-	s = strings.Replace(s, p.HeadTail[1], "", -1)
 
+	s = bytes.Replace(s, []byte("-"), []byte(""), -1)
+	s = bytes.Replace(s, p.HeadTail[2], []byte("-"), -1)
+	s = bytes.Replace(s, p.HeadTail[0], []byte(""), -1)
+	s = bytes.Replace(s, p.HeadTail[1], []byte(""), -1)
+	s = bytes.Trim(s, "\x00")
 	return s, err
 }
 
-func count(s, sep string, leaveAfter ...int) (count int) {
+func count(s, sep []byte, leaveAfter ...int) (count int) {
 	// special case
 	if len(sep) == 0 {
 		return len(s)
 	}
 	n := 0
 	for {
-		i := strings.Index(s, sep)
+		i := bytes.Index(s, sep)
 		if i == -1 {
 			return n
 		}
@@ -108,10 +133,12 @@ func count(s, sep string, leaveAfter ...int) (count int) {
 	}
 }
 
-func applyPatchIota(s string, p []string) (string, error) {
-	pos1 := strings.Index(s, p[0])
+// applyPatchIota will replace byte s with p[2] which is flanked on the left
+// by p[0] and on the right by p[1]
+func applyPatchIota(s []byte, p [][]byte) ([]byte, error) {
+	pos1 := bytes.Index(s, p[0])
 	if pos1 == -1 {
-		return "", fmt.Errorf("left index no longer exists")
+		return []byte(""), fmt.Errorf("left index no longer exists")
 	}
 	// move position up if overlapping sequence is there (go only finds
 	// the non-overlapping sequences)
@@ -119,22 +146,21 @@ func applyPatchIota(s string, p []string) (string, error) {
 		if i+len(p[0]) > len(s)-1 {
 			break
 		}
-		if s[i:i+len(p[0])] == p[0] {
+		if bytes.Compare(s[i:i+len(p[0])], p[0]) == 0 {
 			pos1 = i
 		}
 	}
 	pos1 = pos1 + len(p[0])
-	pos2 := strings.Index(s, p[1])
+	pos2 := bytes.Index(s, p[1])
 	if pos2 == -1 {
-		return "", fmt.Errorf("right index no longer exists")
+		return []byte(""), fmt.Errorf("right index no longer exists")
 	}
-	s = s[:pos1] + p[2] + s[pos2:]
-	// fmt.Println(s)
-	return s, nil
+	// fmt.Println("1", string(s[:pos1]), string(p[2]), string(s[pos2:]))
+	return combineThreeByteArrays(s[:pos1], p[2], s[pos2:]), nil
 }
 
-func getPatchIota(aln1, aln2 string, headTail []string) ([]string, int) {
-	aln1WithoutWhiteSpace := strings.Replace(aln1, "-", "", -1)
+func getPatchIota(aln1, aln2 []byte, headTail [][]byte) ([][]byte, int) {
+	aln1WithoutWhiteSpace := bytes.Replace(aln1, []byte("-"), []byte(""), -1)
 	// fmt.Print("\n")
 	// fmt.Println(aln1)
 	// fmt.Println(aln2)
@@ -152,7 +178,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) ([]string, int) {
 
 	// find unique subsequence in front
 	for i := bookends[1]; i >= bookends[0]; i-- {
-		if count(aln1WithoutWhiteSpace, strings.Replace(aln1[i:bookends[1]], "-", "", -1), 2) > 1 {
+		if count(aln1WithoutWhiteSpace, bytes.Replace(aln1[i:bookends[1]], []byte("-"), []byte(""), -1), 2) > 1 {
 			continue
 		}
 		bookends[0] = i
@@ -181,7 +207,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) ([]string, int) {
 			bookends[3] = len(aln1)
 		}
 		// fmt.Printf("2 %+v, '%s'\n", bookends, aln1[bookends[2]:bookends[3]])
-		if count(aln1WithoutWhiteSpace, strings.Replace(aln1[bookends[2]:bookends[3]], "-", "", -1), 2) == 1 {
+		if count(aln1WithoutWhiteSpace, bytes.Replace(aln1[bookends[2]:bookends[3]], []byte("-"), []byte(""), -1), 2) == 1 {
 			break
 		}
 		bookends[2] = bookends[3]
@@ -189,7 +215,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) ([]string, int) {
 	// now that we have a second matching sequence, try to reduce it
 	for bookends[3] = bookends[2] + 1; bookends[3] < len(aln1); bookends[3]++ {
 		// fmt.Println(bookends, aln1[bookends[2]:bookends[3]])
-		if count(aln1WithoutWhiteSpace, strings.Replace(aln1[bookends[2]:bookends[3]], "-", "", -1), 2) == 1 {
+		if count(aln1WithoutWhiteSpace, bytes.Replace(aln1[bookends[2]:bookends[3]], []byte("-"), []byte(""), -1), 2) == 1 {
 			break
 		}
 	}
@@ -201,10 +227,10 @@ func getPatchIota(aln1, aln2 string, headTail []string) ([]string, int) {
 	left := aln1[bookends[0]:bookends[1]]
 	right := aln1[bookends[2]:bookends[3]]
 	insertion := aln2[bookends[1]:bookends[2]]
-	insertion = strings.Replace(insertion, "-", "", -1)
+	insertion = bytes.Replace(insertion, []byte("-"), []byte(""), -1)
 
 	// fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
-	return []string{left, right, insertion}, bookends[2]
+	return [][]byte{left, right, insertion}, bookends[2]
 }
 
 var src = rand.NewSource(time.Now().UnixNano())
