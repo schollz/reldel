@@ -48,7 +48,6 @@ func GetPatch(s1, s2 string) Patch {
 			break
 		}
 	}
-	headTail = []string{"Mp", "8x", "Tv"}
 	s1 = strings.Replace(s1, "-", headTail[2], -1)
 	s2 = strings.Replace(s2, "-", headTail[2], -1)
 	patchIotas := []PatchIota{}
@@ -56,8 +55,8 @@ func GetPatch(s1, s2 string) Patch {
 	aln1 = headTail[0] + aln1 + headTail[1]
 	aln2 = headTail[0] + aln2 + headTail[1]
 
-	fmt.Println(strings.Replace(aln1, "\n", "#", -1))
-	fmt.Println(strings.Replace(aln2, "\n", "#", -1))
+	// fmt.Println(strings.Replace(aln1, "\n", "#", -1))
+	// fmt.Println(strings.Replace(aln2, "\n", "#", -1))
 	for {
 		if aln1 == aln2 {
 			break
@@ -115,14 +114,14 @@ func applyPatchIota(s string, p PatchIota) string {
 		panic("problem")
 	}
 	s = s[:pos1] + p.Between + s[pos2:]
-	fmt.Println(s)
+	// fmt.Println(s)
 	return s
 }
 
 func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
-	fmt.Print("\n")
-	fmt.Println(aln1)
-	fmt.Println(aln2)
+	// fmt.Print("\n")
+	// fmt.Println(aln1)
+	// fmt.Println(aln2)
 	// abcdef
 	// ab-def
 	//   ^
