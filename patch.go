@@ -13,12 +13,14 @@ const match = 10
 const mismatch = -1
 const gap = -5
 
+// Patch is the unit of patching for a string
 type Patch struct {
 	HeadTail   []string   `json:"h"`
 	PatchIotas [][]string `json:"p"`
 	Time       time.Time  `json:"t"`
 }
 
+// GetPatch will get a patch to transform text `s1` into text `s2`
 func GetPatch(s1, s2 string) Patch {
 	headTail := []string{"start>>>>>>>>>", "<<<<<<<<<<end", "**dash**"}
 	for rLength := 2; rLength < 10; rLength++ {
@@ -67,6 +69,9 @@ func GetPatch(s1, s2 string) Patch {
 	}
 }
 
+// ApplyPatch will transform string `s` using the supplied patch. If there is a problem
+// (which can occur if there has been an edit in the same place) then an error is thrown
+// and the currently patched string is returned.
 func ApplyPatch(s string, p Patch) (string, error) {
 	s = p.HeadTail[0] + strings.Replace(s, "-", p.HeadTail[2], -1) + p.HeadTail[1]
 	var err error
