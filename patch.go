@@ -110,7 +110,7 @@ func ApplyPatch(s []byte, p Patch) ([]byte, error) {
 	s = bytes.Replace(s, p.HeadTail[1], []byte(""), -1)
 	s = bytes.Replace(s, []byte("-"), []byte(""), -1)
 	s = bytes.Replace(s, p.HeadTail[2], []byte("-"), -1)
-	s = bytes.Trim(s, "\x00")
+	// s = bytes.Trim(s, "\x00")
 	// fmt.Println(string(s))
 	return s, err
 }

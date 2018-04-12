@@ -59,6 +59,18 @@ func TestGetPatch2(t *testing.T) {
 	assert.Equal(t, b2, s)
 }
 
+func TestGetPatchBinary(t *testing.T) {
+	b1, _ := ioutil.ReadFile("testing/dircnt")
+	b2, _ := ioutil.ReadFile("testing/dirlist")
+	p := GetPatch(b1, b2)
+	s, err := ApplyPatch(b1, p)
+	assert.Nil(t, err)
+	assert.Equal(t, b2, s)
+	bP, _ := json.MarshalIndent(p, "", " ")
+	ioutil.WriteFile("binary.json", bP, 0644)
+	ioutil.WriteFile("dirlist", s, 777)
+}
+
 func TestGetPatch3(t *testing.T) {
 	f, err := os.Create("cpu.profile")
 	if err != nil {
