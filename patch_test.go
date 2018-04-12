@@ -79,19 +79,19 @@ func TestGetPatch3(t *testing.T) {
 func TestGetPatch4(t *testing.T) {
 	s1 := []byte("The cow jumped over the moon")
 	s2 := []byte("The brown cow leaped over the moon")
-	s3 := []byte("The cow jumped over the full moon")
+	// s3 := []byte("The cow jumped over the full moon")
 	p := GetPatch(s1, s2)
 	s, err := ApplyPatch(s1, p)
 	assert.Nil(t, err)
 	assert.Equal(t, s2, s)
-	p2 := GetPatch(s1, s3)
-	s, err = ApplyPatch(s1, p2)
-	assert.Nil(t, err)
-	assert.Equal(t, s3, s)
+	// p2 := GetPatch(s1, s3)
+	// s, err = ApplyPatch(s1, p2)
+	// assert.Nil(t, err)
+	// assert.Equal(t, s3, s)
 
-	s, err = ApplyPatch(s2, p2)
-	assert.Nil(t, err)
-	assert.Equal(t, []byte("The brown cow leaped over the full moon"), s)
+	// s, err = ApplyPatch(s2, p2)
+	// assert.Nil(t, err)
+	// assert.Equal(t, []byte("The brown cow leaped over the full moon"), s)
 }
 
 // func TestGetPatch5(t *testing.T) {
