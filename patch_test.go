@@ -37,7 +37,7 @@ func TestGetPatch1(t *testing.T) {
 	assert.Equal(t, "ca-t", s)
 }
 
-func TestGetPatchHard(t *testing.T) {
+func TestGetPatch2(t *testing.T) {
 	b1, _ := ioutil.ReadFile("testing/1")
 	b2, _ := ioutil.ReadFile("testing/2")
 	p := GetPatch(string(b1), string(b2))
@@ -46,7 +46,7 @@ func TestGetPatchHard(t *testing.T) {
 	assert.Equal(t, string(b2), s)
 }
 
-func TestGetPatch2(t *testing.T) {
+func TestGetPatch3(t *testing.T) {
 	f, err := os.Create("cpu.profile")
 	if err != nil {
 		log.Fatal(err)
@@ -63,7 +63,7 @@ func TestGetPatch2(t *testing.T) {
 	ioutil.WriteFile("out.json", bP, 0644)
 }
 
-func TestGetPatch3(t *testing.T) {
+func TestGetPatch4(t *testing.T) {
 	s1 := "The cow jumped over the moon"
 	s2 := "The brown cow leaped over the moon"
 	s3 := "The cow jumped over the full moon"
