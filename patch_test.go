@@ -11,7 +11,6 @@ import (
 
 func TestGetPatch1(t *testing.T) {
 	p := GetPatch("", "ca-t")
-	assert.Equal(t, "ca-t", p.PatchIotas[0].Between)
 	assert.Equal(t, "ca-t", ApplyPatch("", p))
 }
 

@@ -48,6 +48,7 @@ func GetPatch(s1, s2 string) Patch {
 			break
 		}
 	}
+	headTail = []string{"Mp", "8x", "Tv"}
 	s1 = strings.Replace(s1, "-", headTail[2], -1)
 	s2 = strings.Replace(s2, "-", headTail[2], -1)
 	patchIotas := []PatchIota{}
@@ -55,8 +56,8 @@ func GetPatch(s1, s2 string) Patch {
 	aln1 = headTail[0] + aln1 + headTail[1]
 	aln2 = headTail[0] + aln2 + headTail[1]
 
-	// fmt.Println(strings.Replace(aln1, "\n", "#", -1))
-	// fmt.Println(strings.Replace(aln2, "\n", "#", -1))
+	fmt.Println(strings.Replace(aln1, "\n", "#", -1))
+	fmt.Println(strings.Replace(aln2, "\n", "#", -1))
 	for {
 		if aln1 == aln2 {
 			break
@@ -77,18 +78,11 @@ func ApplyPatch(s string, p Patch) string {
 	for _, patchIota := range p.PatchIotas {
 		s = applyPatchIota(s, patchIota)
 	}
-	for {
-		s = strings.Replace(s, p.HeadTail[2], "-", -1)
-		s = strings.TrimPrefix(s, p.HeadTail[0])
-		s = strings.TrimSuffix(s, p.HeadTail[1])
-		if strings.Contains(s, p.HeadTail[0]) {
-			continue
-		}
-		if strings.Contains(s, p.HeadTail[1]) {
-			continue
-		}
-		break
-	}
+	s = strings.Replace(s, "-", "", -1)
+	s = strings.Replace(s, p.HeadTail[2], "-", -1)
+	s = strings.Replace(s, p.HeadTail[0], "", -1)
+	s = strings.Replace(s, p.HeadTail[1], "", -1)
+
 	return s
 }
 
@@ -121,12 +115,14 @@ func applyPatchIota(s string, p PatchIota) string {
 		panic("problem")
 	}
 	s = s[:pos1] + p.Between + s[pos2:]
-
+	fmt.Println(s)
 	return s
 }
 
 func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
-
+	fmt.Print("\n")
+	fmt.Println(aln1)
+	fmt.Println(aln2)
 	// abcdef
 	// ab-def
 	//   ^
@@ -190,10 +186,7 @@ func getPatchIota(aln1, aln2 string, headTail []string) (PatchIota, int) {
 	left := aln1[bookends[0]:bookends[1]]
 	right := aln1[bookends[2]:bookends[3]]
 	insertion := aln2[bookends[1]:bookends[2]]
-	left = strings.Replace(left, headTail[2], "-", -1)
-	right = strings.Replace(right, headTail[2], "-", -1)
-	insertion = strings.Replace(insertion, "-", "", -1)
-	insertion = strings.Replace(insertion, headTail[2], "-", -1)
+	// insertion = strings.Replace(insertion, "-", "", -1)
 
 	// fmt.Printf("l: '%s', r: '%s', i: '%s'\n", left, right, insertion)
 	return PatchIota{
